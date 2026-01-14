@@ -56,8 +56,7 @@ services:
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
-    entrypoint: ["/bin/sh", "-c"]
-    command: ["sleep 45 && exec agentbeats scenario.toml output/results.json"]
+    command: ["/bin/sh", "-c", "sleep 45 && uv run agentbeats scenario.toml output/results.json"]
     depends_on:{client_depends}
     networks:
       - agent-network
