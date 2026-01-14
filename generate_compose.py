@@ -25,7 +25,8 @@ COMPOSE_PATH = "docker-compose.yml"
 A2A_SCENARIO_PATH = "a2a-scenario.toml"
 ENV_PATH = ".env.example"
 
-DEFAULT_PORT = 9002
+# Ports are hardcoded in the agent Python files
+WHITE_AGENT_PORT = 9002
 GREEN_AGENT_PORT = 9003
 
 COMPOSE_TEMPLATE = """# Auto-generated from scenario.toml
@@ -38,7 +39,7 @@ services:
     command: ["python", "-m", "src.green_agent.green_server"]
     environment:{green_env}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:{green_port}/.well-known/agent-card.json"]
+      test: ["CMD", "curl", "-f", "http://localhost:9003/.well-known/agent-card.json"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -72,7 +73,7 @@ PARTICIPANT_TEMPLATE = """  {name}:
     command: ["python", "-m", "src.white_agent.agent"]
     environment:{env}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:{port}/.well-known/agent-card.json"]
+      test: ["CMD", "curl", "-f", "http://localhost:9002/.well-known/agent-card.json"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -82,7 +83,7 @@ PARTICIPANT_TEMPLATE = """  {name}:
 """
 
 A2A_SCENARIO_TEMPLATE = """[green_agent]
-endpoint = "http://green-agent:{green_port}"
+endpoint = "http://green-agent:9003"
 
 {participants}
 {config}"""
@@ -130,7 +131,6 @@ def generate_docker_compose(scenario: dict[str, Any]) -> str:
         PARTICIPANT_TEMPLATE.format(
             name=p["name"],
             image=p["image"],
-            port=DEFAULT_PORT,
             env=format_env_vars(p.get("env", {}))
         )
         for p in participants
@@ -140,7 +140,6 @@ def generate_docker_compose(scenario: dict[str, Any]) -> str:
 
     return COMPOSE_TEMPLATE.format(
         green_image=green["image"],
-        green_port=GREEN_AGENT_PORT,
         green_env=format_env_vars(green.get("env", {})),
         green_depends=format_depends_on(participant_names),
         participant_services=participant_services,
@@ -157,7 +156,7 @@ def generate_a2a_scenario(scenario: dict[str, Any]) -> str:
         participant_lines.append(
             f"[[participants]]\n"
             f"role = \"{p['name']}\"\n"
-            f"endpoint = \"http://{p['name']}:{DEFAULT_PORT}\"\n"
+            f"endpoint = \"http://{p['name']}:{WHITE_AGENT_PORT}\"\n"
             f"agentbeats_id = \"{p['agentbeats_id']}\"\n"
         )
 
@@ -165,7 +164,6 @@ def generate_a2a_scenario(scenario: dict[str, Any]) -> str:
     config_lines = [tomli_w.dumps({"config": config_section})]
 
     return A2A_SCENARIO_TEMPLATE.format(
-        green_port=GREEN_AGENT_PORT,
         participants="\n".join(participant_lines),
         config="\n".join(config_lines)
     )
