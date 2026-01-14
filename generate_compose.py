@@ -25,9 +25,7 @@ COMPOSE_PATH = "docker-compose.yml"
 A2A_SCENARIO_PATH = "a2a-scenario.toml"
 ENV_PATH = ".env.example"
 
-# Ports are hardcoded in the agent Python files
-WHITE_AGENT_PORT = 9002
-GREEN_AGENT_PORT = 9003
+DEFAULT_PORT = 9009
 
 COMPOSE_TEMPLATE = """# Auto-generated from scenario.toml
 
@@ -36,14 +34,14 @@ services:
     image: {green_image}
     platform: linux/amd64
     container_name: green-agent
-    command: ["python", "-m", "src.green_agent.green_server"]
+    command: ["--host", "0.0.0.0", "--port", "{green_port}", "--card-url", "http://green-agent:{green_port}"]
     environment:{green_env}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9003/.well-known/agent-card.json"]
+      test: ["CMD", "curl", "-f", "http://localhost:{green_port}/.well-known/agent-card.json"]
       interval: 5s
       timeout: 3s
-      retries: 20
-      start_period: 60s
+      retries: 10
+      start_period: 30s
     depends_on:{green_depends}
     networks:
       - agent-network
@@ -53,13 +51,10 @@ services:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
     platform: linux/amd64
     container_name: agentbeats-client
-    working_dir: /app
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
-    environment:
-      - PYTHONIOENCODING=utf-8
-    command: ["/bin/sh", "-c", "sleep 45 && uv run agentbeats scenario.toml output/results.json"]
+    command: ["scenario.toml", "output/results.json"]
     depends_on:{client_depends}
     networks:
       - agent-network
@@ -73,20 +68,20 @@ PARTICIPANT_TEMPLATE = """  {name}:
     image: {image}
     platform: linux/amd64
     container_name: {name}
-    command: ["python", "-m", "src.white_agent.agent"]
+    command: ["--host", "0.0.0.0", "--port", "{port}", "--card-url", "http://{name}:{port}"]
     environment:{env}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9002/.well-known/agent-card.json"]
+      test: ["CMD", "curl", "-f", "http://localhost:{port}/.well-known/agent-card.json"]
       interval: 5s
       timeout: 3s
-      retries: 20
-      start_period: 60s
+      retries: 10
+      start_period: 30s
     networks:
       - agent-network
 """
 
 A2A_SCENARIO_TEMPLATE = """[green_agent]
-endpoint = "http://green-agent:9003"
+endpoint = "http://green-agent:{green_port}"
 
 {participants}
 {config}"""
@@ -134,6 +129,7 @@ def generate_docker_compose(scenario: dict[str, Any]) -> str:
         PARTICIPANT_TEMPLATE.format(
             name=p["name"],
             image=p["image"],
+            port=DEFAULT_PORT,
             env=format_env_vars(p.get("env", {}))
         )
         for p in participants
@@ -143,6 +139,7 @@ def generate_docker_compose(scenario: dict[str, Any]) -> str:
 
     return COMPOSE_TEMPLATE.format(
         green_image=green["image"],
+        green_port=DEFAULT_PORT,
         green_env=format_env_vars(green.get("env", {})),
         green_depends=format_depends_on(participant_names),
         participant_services=participant_services,
@@ -159,7 +156,7 @@ def generate_a2a_scenario(scenario: dict[str, Any]) -> str:
         participant_lines.append(
             f"[[participants]]\n"
             f"role = \"{p['name']}\"\n"
-            f"endpoint = \"http://{p['name']}:{WHITE_AGENT_PORT}\"\n"
+            f"endpoint = \"http://{p['name']}:{DEFAULT_PORT}\"\n"
             f"agentbeats_id = \"{p['agentbeats_id']}\"\n"
         )
 
@@ -167,6 +164,7 @@ def generate_a2a_scenario(scenario: dict[str, Any]) -> str:
     config_lines = [tomli_w.dumps({"config": config_section})]
 
     return A2A_SCENARIO_TEMPLATE.format(
+        green_port=DEFAULT_PORT,
         participants="\n".join(participant_lines),
         config="\n".join(config_lines)
     )
@@ -211,15 +209,15 @@ def main():
 
     scenario = parse_scenario(args.scenario)
 
-    with open(COMPOSE_PATH, "w", encoding="utf-8") as f:
+    with open(COMPOSE_PATH, "w") as f:
         f.write(generate_docker_compose(scenario))
 
-    with open(A2A_SCENARIO_PATH, "w", encoding="utf-8") as f:
+    with open(A2A_SCENARIO_PATH, "w") as f:
         f.write(generate_a2a_scenario(scenario))
 
     env_content = generate_env_file(scenario)
     if env_content:
-        with open(ENV_PATH, "w", encoding="utf-8") as f:
+        with open(ENV_PATH, "w") as f:
             f.write(env_content)
         print(f"Generated {ENV_PATH}")
 
