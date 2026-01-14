@@ -3,10 +3,10 @@ image = "ghcr.io/gabrielzhouyy/ethics_bench:latest"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}" }
 
 [[participants]]
-agentbeats_id = ""
+agentbeats_id = "gabrielzhouyy-ethicsbench-white-agent-v1"
 name = "white_agent"
-image = ""
-env = {}
+image = "ghcr.io/gabrielzhouyy/white_agent:latest"
+env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}" }
 
 [config]
 # EthicsBench evaluation settings

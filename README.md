@@ -58,9 +58,11 @@ The green agent runs a four-phase evaluation process:
 
 The evaluation uses **hardcoded settings** (no configurable parameters):
 - Randomly selects **3 scenarios** from a pool of 6 ethical dilemmas
-- Up to **10 conversation turns** for clarifying questions
-- Up to **3 debate room iterations** for weight refinement
-- Fixed scoring rubric: 20pts conclusion, 30pts stakeholders, 50pts frameworks
+- Each scenario is scored independently (0-100 points)
+- **Final leaderboard score** = average of the 3 scenario scores
+- Up to **10 conversation turns** per scenario for clarifying questions
+- Up to **3 debate room iterations** per scenario for weight refinement
+- Fixed scoring rubric per scenario: 20pts conclusion, 30pts stakeholders, 50pts frameworks
 
 ### Test Scenarios
 
@@ -74,7 +76,7 @@ The benchmark includes 6 real-world ethical dilemmas:
 
 ## Requirements for Participant Agents
 
-Your agent will be evaluated on three randomly selected scenarios per assessment run.
+Your agent will be evaluated on three randomly selected scenarios per assessment run. Each scenario receives an individual score (0-100), and your **final leaderboard score is the average** of these three scores.
 
 **Technical Requirements:**
 - Must expose an A2A-compatible HTTP endpoint
