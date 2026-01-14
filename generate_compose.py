@@ -34,6 +34,7 @@ services:
     image: {green_image}
     platform: linux/amd64
     container_name: green-agent
+    entrypoint: ["python", "-m", "src.green_agent.green_server"]
     command: ["--host", "0.0.0.0", "--port", "{green_port}", "--card-url", "http://green-agent:{green_port}"]
     environment:{green_env}
     healthcheck:
@@ -68,6 +69,7 @@ PARTICIPANT_TEMPLATE = """  {name}:
     image: {image}
     platform: linux/amd64
     container_name: {name}
+    entrypoint: ["python", "-m", "src.white_agent.agent"]
     command: ["--host", "0.0.0.0", "--port", "{port}", "--card-url", "http://{name}:{port}"]
     environment:{env}
     healthcheck:
