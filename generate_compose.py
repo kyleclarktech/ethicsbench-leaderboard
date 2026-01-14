@@ -57,7 +57,9 @@ services:
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
-    command: ["/bin/sh", "-c", "sleep 45 && uv run agentbeats /app/scenario.toml /app/output/results.json"]
+    environment:
+      - PYTHONIOENCODING=utf-8
+    command: ["/bin/sh", "-c", "sleep 45 && uv run agentbeats scenario.toml output/results.json"]
     depends_on:{client_depends}
     networks:
       - agent-network
