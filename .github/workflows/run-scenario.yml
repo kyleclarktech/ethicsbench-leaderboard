@@ -30,19 +30,47 @@ jobs:
       - name: Create output directory
         run: mkdir -p output && chmod 777 output
 
-      - name: Export secrets as environment variables
+      - name: Export required secrets to environment file
         env:
-          SECRETS_JSON: ${{ toJSON(secrets) }}
+          # Only export specific required secrets - never dump all secrets
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: |
-          echo "$SECRETS_JSON" | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > .env
+          # Create .env with only the secrets needed for evaluation
+          # This prevents accidental exposure of unrelated secrets
+          echo "GOOGLE_API_KEY=${GOOGLE_API_KEY}" > .env
+          # Validate the file was created with content (not empty values)
+          if [ ! -s .env ]; then
+            echo "::error::Failed to create .env file"
+            exit 1
+          fi
 
       - name: Validate required secrets
         run: |
           set -e
-          if ! grep -q "GOOGLE_API_KEY=." .env; then
-            echo "::error::GOOGLE_API_KEY secret is missing or empty. Please add it to your repository secrets."
+          # Check that .env file exists and has content
+          if [ ! -f .env ]; then
+            echo "::error::.env file was not created. Check the previous step."
             exit 1
           fi
+
+          # Validate GOOGLE_API_KEY is present and non-empty
+          if ! grep -q "^GOOGLE_API_KEY=.\+" .env; then
+            echo "::error::GOOGLE_API_KEY secret is missing or empty."
+            echo "::error::Please add GOOGLE_API_KEY to your repository secrets:"
+            echo "::error::  1. Go to Settings → Secrets and variables → Actions"
+            echo "::error::  2. Click 'New repository secret'"
+            echo "::error::  3. Name: GOOGLE_API_KEY, Value: your Gemini API key"
+            exit 1
+          fi
+
+          # Validate key appears to have reasonable length (API keys are typically 39+ chars)
+          KEY_LENGTH=$(grep "^GOOGLE_API_KEY=" .env | cut -d= -f2 | tr -d '\n' | wc -c)
+          if [ "$KEY_LENGTH" -lt 20 ]; then
+            echo "::error::GOOGLE_API_KEY appears too short (${KEY_LENGTH} chars). Verify the secret value."
+            exit 1
+          fi
+
+          echo "✓ GOOGLE_API_KEY validated (${KEY_LENGTH} characters)"
 
       - name: Check if GHCR_TOKEN is available
         id: check_ghcr
@@ -70,6 +98,44 @@ jobs:
         if: always()
         run: |
           docker compose logs > docker-compose.log 2>&1 || true
+
+      - name: Analyze logs for common issues
+        if: always()
+        run: |
+          echo "=== Diagnostic Analysis ==="
+
+          # Check for API key issues
+          if grep -qi "api.key\|api_key\|authentication" docker-compose.log 2>/dev/null; then
+            echo "::warning::Potential API key issue detected in logs"
+            grep -i "api.key\|api_key\|authentication" docker-compose.log | head -5
+          fi
+
+          # Check for conversation turns
+          TURNS=$(grep -o "Conversation complete ([0-9]* turns)" docker-compose.log 2>/dev/null | head -1 || echo "")
+          if [ -n "$TURNS" ]; then
+            echo "✓ $TURNS"
+          else
+            echo "::warning::No conversation completion message found"
+          fi
+
+          # Check for classifier errors
+          if grep -q "Error classifying response" docker-compose.log 2>/dev/null; then
+            echo "::warning::Classifier errors detected - may cause premature conversation end"
+            grep "Error classifying response" docker-compose.log | head -3
+          fi
+
+          # Check for evaluation completion
+          if grep -q "evaluation_complete.*true" docker-compose.log 2>/dev/null; then
+            echo "✓ Evaluation completed successfully"
+          elif grep -q "evaluation_complete.*false" docker-compose.log 2>/dev/null; then
+            echo "::error::Evaluation failed - check logs for details"
+          fi
+
+          # Show average score if available
+          SCORE=$(grep -o '"average_score":[^,}]*' docker-compose.log 2>/dev/null | head -1 || echo "")
+          if [ -n "$SCORE" ]; then
+            echo "✓ $SCORE"
+          fi
 
       - name: Upload docker logs
         if: always()
