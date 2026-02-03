@@ -6,7 +6,7 @@ env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", WHITE_AGENT_URL = "http://white_ag
 agentbeats_id = "gabrielzhouyy-ethicsbench-white-agent-v1"
 name = "white_agent"
 image = "ghcr.io/gabrielzhouyy/white_agent:latest"
-env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}" }
+env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", A2A_HOST = "white_agent" }
 
 [config]
 # EthicsBench evaluation settings
@@ -16,3 +16,4 @@ env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}" }
 # - Max 3 debate room iterations per scenario (scorer_agent ↔ debate_critic_agent refine stakeholder/framework weights)
 # - Scoring: 20pts conclusion, 30pts stakeholder consideration, 50pts framework alignment
 # Fix: Added WHITE_AGENT_URL to green_agent env to fix hostname mismatch
+# Fix: Added A2A_HOST to white_agent env so agent-card advertises correct URL for inter-container communication
