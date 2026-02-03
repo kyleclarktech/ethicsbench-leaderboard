@@ -70,7 +70,7 @@ PARTICIPANT_TEMPLATE = """  {name}:
     image: {image}
     platform: linux/amd64
     container_name: {name}
-    command: ["python", "-m", "src.white_agent.agent"]
+    # Don't override CMD - let the image's CMD (uvicorn) run the A2A server
     environment:{env}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9002/.well-known/agent-card.json"]
