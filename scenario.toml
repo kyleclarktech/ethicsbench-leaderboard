@@ -1,5 +1,5 @@
 [green_agent]
-image = "ghcr.io/kyleclarktech/ethics_bench:latest"
+image = "ghcr.io/gabrielzhouyy/ethics_bench:latest"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}" }
 
 [[participants]]
