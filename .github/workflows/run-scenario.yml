@@ -204,9 +204,12 @@ jobs:
 
       - name: Create submission branch
         run: |
-          git remote add upstream https://github.com/${{ steps.target.outputs.repo }}.git
-          git fetch upstream
-          git checkout -b ${{ steps.metadata.outputs.branch_name }} upstream/main
+          # Fetch latest from origin (fork) to ensure we have current workflow files
+          git fetch origin
+          # Create branch from origin/main to avoid workflow file conflicts
+          git checkout -b ${{ steps.metadata.outputs.branch_name }} origin/main
+          # Also add upstream for the PR link to work
+          git remote add upstream https://github.com/${{ steps.target.outputs.repo }}.git || true
 
       - name: Commit results
         run: |
